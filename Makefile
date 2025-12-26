@@ -1,7 +1,9 @@
-.PHONY: lock install
+.PHONY: lock install run
 
-# Directories with requirement specs
 REQ_DIRS := requirements
+
+run:
+	PYTHONPATH=. python3 experiments/run_experiment.py
 
 lock:
 	@set -e; \
