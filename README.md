@@ -20,6 +20,7 @@ Create an environment and install dependencies:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
+pip install pip-tools
 make install
 ```
 
