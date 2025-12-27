@@ -43,7 +43,7 @@ PYTHONPATH=. python3 experiments/run_experiment.py \
   --hidden-dims 256 128 64 \
   --base-lr 5e-4 \
   --periods 4 2 1 \
-  --save-dir results
+  --verbose \
 ```
 
 ## Outputs

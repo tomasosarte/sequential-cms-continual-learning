@@ -12,6 +12,7 @@ from optimizers.cms_optimizer_wrapper import CMSOptimizerWrapper, CMSGroup
 from experiments.metrics import compute_avg_forgetting, compute_avg_accuracy
 from models.mlp import MLP
 from experiments.plots import make_plots_from_results
+from experiments.stats import paired_ttest
 
 def evaluate(model, loader, device) -> float:
     model.eval()
@@ -197,6 +198,19 @@ def run_n_times(n_runs=5, seed=None, verbose=False,  save_dir="results", **kwarg
         "baseline_acc_all":         base_accs,
         "cms_acc_all":              cms_accs,
     }
+
+    # Perofrm statistical tests
+    if n_runs > 1:
+
+        t_stat_acc, p_value_acc = paired_ttest(base_accs, cms_accs)
+        t_stat_forg, p_value_forg = paired_ttest(base_forgets, cms_forgets)
+
+        report.update({
+            "ttest_avg_acc_t_stat": t_stat_acc,
+            "ttest_avg_acc_p_value": p_value_acc,
+            "ttest_forgetting_t_stat": t_stat_forg,
+            "ttest_forgetting_p_value": p_value_forg,
+        })
 
     # save summary
     summary = {
