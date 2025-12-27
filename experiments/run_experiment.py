@@ -231,12 +231,12 @@ if __name__ == "__main__":
     )
 
     # --- general ---
-    parser.add_argument("--runs", type=int, default=5, help="Number of independent experiment runs (different seeds)")
+    parser.add_argument("--runs", type=int, default=10, help="Number of independent experiment runs (different seeds)")
     parser.add_argument("--seed", type=int, default=0, help="Base random seed (run k uses seed+k)")
     parser.add_argument("--verbose", action="store_true", help="Print per-task accuracy tables")
 
     # --- experiment ---
-    parser.add_argument("--tasks", type=int, default=9, help="Number of sequential Permuted-MNIST tasks")
+    parser.add_argument("--tasks", type=int, default=10, help="Number of sequential Permuted-MNIST tasks")
     parser.add_argument("--epochs", type=int, default=8, help="Training epochs per task")
     parser.add_argument("--batch-size", type=int, default=128, help="Mini-batch size")
 

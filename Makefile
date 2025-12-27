@@ -2,9 +2,6 @@
 
 REQ_DIRS := requirements
 
-run:
-	PYTHONPATH=. python3 experiments/run_experiment.py
-
 lock:
 	@set -e; \
 	for d in $(REQ_DIRS); do \
