@@ -64,7 +64,3 @@ Open the notebook `analysis.ipynb` to unsderstand better the experiment and the 
 - Each run uses `seed + k` for run index `k`.
 - CUDA is used when available; otherwise CPU is used.
 - Results and plots are deterministic for a fixed seed and environment.
-
-## License
-
-Add your preferred license here.
