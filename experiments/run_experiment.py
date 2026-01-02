@@ -126,23 +126,18 @@ def run_permuted_mnist_cms_experiment(
 
     return acc_matrix_baseline, acc_matrix_cms
 
-def run_n_times(n_runs=5, seed=None, verbose=False,  save_dir="results", **kwargs):
+def run_n_times(n_runs=5, seed=None, verbose=False, dir="test", **kwargs):
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"    
     print("\n" + "=" * 70)
     print("Running Permuted-MNIST Continual Learning Experiment")
+    print(f"Using device: {device}")
+    print(f"Total runs: {n_runs}")
+    print("=" * 70)
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    if verbose:
-        print(f"Using device: {device}")
-
-    save_dir = Path(save_dir)
-    (save_dir / "raw").mkdir(parents=True, exist_ok=True)
-    (save_dir / "figures").mkdir(parents=True, exist_ok=True)
-
-    if verbose:
-        print("\n" + "=" * 70)
-        print("🚀 Running Permuted-MNIST Continual Learning Experiment")
-        print(f"Total runs: {n_runs}")
-        print("=" * 70)
+    dir = Path("results") / dir
+    (dir / "raw").mkdir(parents=True, exist_ok=True)
+    (dir / "figures").mkdir(parents=True, exist_ok=True)
 
     base_forgets, cms_forgets = [], []
     base_accs, cms_accs = [], []
@@ -164,7 +159,7 @@ def run_n_times(n_runs=5, seed=None, verbose=False,  save_dir="results", **kwarg
 
         # save raw matrices per run
         np.savez(
-            save_dir / "raw" / f"seed_{run_seed}.npz",
+            dir / "raw" / f"seed_{run_seed}.npz",
             acc_baseline=A_base,
             acc_cms=A_cms,
         )
@@ -217,12 +212,12 @@ def run_n_times(n_runs=5, seed=None, verbose=False,  save_dir="results", **kwarg
         "config": {"n_runs": n_runs, "seed0": seed, **kwargs},
         "report": report
     }
-    with open(save_dir / "summary.json", "w") as f:
+    with open(dir / "summary.json", "w") as f:
         json.dump(summary, f, indent=2)
 
     make_plots_from_results(
-        results_dir=save_dir / "raw",
-        out_dir=save_dir / "figures",
+        results_dir=dir / "raw",
+        out_dir=dir / "figures",
         show=False
     )
 
@@ -262,7 +257,7 @@ if __name__ == "__main__":
     parser.add_argument("--periods", type=int, nargs="+", default=[4, 2, 1], help="CMS update periods (slow → fast)")
 
     # --- output ---
-    parser.add_argument("--save-dir", type=str, default="results", help="Directory to store results and plots")
+    parser.add_argument("--dir", type=str, default="results", help="Directory to store results and plots")
 
     args = parser.parse_args()
 
@@ -270,7 +265,7 @@ if __name__ == "__main__":
         n_runs=args.runs,
         seed=args.seed,
         verbose=args.verbose,
-        save_dir=args.save_dir,
+        dir=args.dir,
         T=args.tasks,
         epochs_per_task=args.epochs,
         batch_size=args.batch_size,

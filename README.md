@@ -1,5 +1,5 @@
 # Catastrophic Forgetting: CMS vs Baseline on Permuted-MNIST
-This repository runs a  experiments testing the effect of principles in the Nested Learninn paper applied to continual learning setups.
+This repository runs a experiment testing the effect of principles in the Nested Learning paper applied to continual learning setups.
 
 ## Repository layout
 
@@ -36,24 +36,25 @@ Default settings run 5 seeds and save outputs under `results/`:
 
 ```bash
 PYTHONPATH=. python3 experiments/run_experiment.py \
-  --runs 10 \
+  --runs 2 \
   --seed 0 \
-  --tasks 10 \
+  --tasks 5 \
   --epochs 8 \
   --batch-size 128 \
   --hidden-dims 256 128 64 \
   --base-lr 5e-4 \
   --periods 4 2 1 \
   --verbose \
+  --dir=test
 ```
 
 ## Outputs
 
 After a run, the following files are created:
 
-- `results/raw/seed_*.npz`: per-run accuracy matrices (baseline and CMS).
-- `results/summary.json`: aggregated metrics and run configuration.
-- `results/figures/`: exported plots (accuracy over time, final forgetting per task).
+- `results/{dir}/raw/seed_*.npz`: per-run accuracy matrices (baseline and CMS).
+- `results/{dir}/summary.json`: aggregated metrics and run configuration.
+- `results/{dir}/figures/`: exported plots (accuracy over time, final forgetting per task).
 
 ## Analyze results
 
