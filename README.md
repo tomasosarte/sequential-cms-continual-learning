@@ -1,21 +1,68 @@
-# Catastrophic Forgetting: CMS vs Baseline on Permuted-MNIST
-This repository runs a experiment testing the effect of principles in the Nested Learning paper applied to continual learning setups.
+# Continuum Multi-Timescale Memory System (CMS) for Continual Learning
 
-## Repository layout
+This repository provides a **reproducible PyTorch implementation** of the **Continuum Multi-Timescale Memory System (CMS)** introduced in *Nested Learning: The Illusion of Deep Learning Architectures* (NeurIPS 2025), together with **controlled continual-learning experiments** analyzing its impact on catastrophic forgetting.
 
-- `experiments/run_experiment.py`: main experiment runner (baseline vs CMS).
-- `experiments/metrics.py`: average accuracy/forgetting utilities.
-- `experiments/stats.py`: paired t-test helper.
-- `experiments/plots.py`: plot generation from saved results.
-- `datasets/permuted_mnist.py`: Permuted-MNIST task generator.
-- `models/mlp.py`: MLP model definition.
-- `optimizers/cms_optimizer_wrapper.py`: CMS optimizer wrapper.
-- `results/`: output directory for raw runs, figures, and summary report.
-- `notebooks/analysis.ipynb`: analysis notebook to summarize results.
+CMS is implemented as a **multi-level learning system** in which different parameter blocks update at **distinct time scales**, forming a continuum of fast-to-slow memories.
 
-## Setup
+---
 
-Create an environment and install dependencies:
+## Reference
+
+This repository implements and evaluates the **Continuum Multi-Timescale Memory System (CMS)** proposed in:
+
+> Ali Behrouz et al., *Nested Learning: The Illusion of Deep Learning Architectures*, NeurIPS 2025.
+
+### What this repository adds
+- Minimal, transparent PyTorch implementation of CMS as a nested learning system  
+- Controlled continual-learning evaluation on Permuted-MNIST  
+- Quantitative analysis of catastrophic forgetting (accuracy matrices, final forgetting, statistical tests)  
+- Clean separation between model, optimizer, experiments, and analysis  
+
+---
+
+## Method Overview
+
+### Nested Learning perspective
+Neural architectures and optimizers are viewed as **nested optimization processes** operating at different update frequencies.  
+Each process acts as an **associative memory** that compresses information from its own temporal context.
+
+### Continuum Multi-Timescale Memory System (CMS)
+CMS distributes memory across multiple parameter blocks, each updated at a distinct frequency:
+
+- **Fast blocks** adapt quickly to recent data  
+- **Slow blocks** evolve gradually and retain long-term knowledge  
+
+All blocks participate in the forward and backward pass at every step, but **parameter updates are applied only at scheduled intervals**.  
+This enables fast adaptation while preserving stable long-term representations.
+
+---
+
+## Repository Structure
+
+```
+.
+├── experiments/
+│   ├── run_experiment.py         # Main experiment runner (Baseline vs CMS)
+│   ├── metrics.py                # Accuracy & forgetting metrics
+│   ├── stats.py                  # Paired statistical tests
+│   └── plots.py                  # Figure generation
+├── datasets/
+│   └── permuted_mnist.py         # Continual Permuted-MNIST generator
+├── models/
+│   └── mlp.py                    # MLP backbone
+├── optimizers/
+│   └── cms_optimizer_wrapper.py  # CMS update scheduling
+├── notebooks/
+│   └── analysis.ipynb            # Result analysis & visualization
+├── results/                      # Raw runs, figures, summaries
+└── README.md
+```
+
+---
+
+## Installation
+
+Create a virtual environment and install dependencies:
 
 ```bash
 python3 -m venv .venv
@@ -24,44 +71,104 @@ pip install pip-tools
 make install
 ```
 
-If you want to regenerate the lockfile from `requirements/requirements.in`:
+To regenerate the lockfile:
 
 ```bash
 make lock
 ```
 
-## Run the experiment
+---
 
-Default settings run 5 seeds and save outputs under `results/`:
+## Reproducing Experiments
 
 ```bash
 PYTHONPATH=. python3 experiments/run_experiment.py \
-  --runs 2 \
+  --runs 10 \
   --seed 0 \
-  --tasks 5 \
+  --tasks 10 \
   --epochs 8 \
   --batch-size 128 \
   --hidden-dims 256 128 64 \
   --base-lr 5e-4 \
   --periods 4 2 1 \
   --verbose \
-  --dir=test
+  --dir test
 ```
+
+---
+
+## Argument details
+
+### General experiment control
+- `--runs`: number of independent repetitions (seed + k per run)  
+- `--seed`: base random seed  
+- `--verbose`: print per-task accuracy tables  
+
+### Continual learning setup
+- `--tasks`: number of sequential Permuted-MNIST tasks  
+- `--epochs`: training epochs per task  
+- `--batch-size`: mini-batch size  
+
+### Model
+- `--hidden-dims`: hidden layer widths of the MLP  
+
+### Optimization & CMS
+- `--base-lr`: base learning rate  
+- `--periods`: CMS update periods (slow → fast)
+
+All parameter blocks receive gradients at every step, but optimizer updates are applied only at scheduled intervals.
+
+### Output
+- `--dir`: output directory under `results/`
+
+---
 
 ## Outputs
 
-After a run, the following files are created:
+Each run produces:
+- `results/{dir}/raw/seed_*.npz`: accuracy matrices  
+- `results/{dir}/summary.json`: aggregated metrics  
+- `results/{dir}/figures/`: plots  
 
-- `results/{dir}/raw/seed_*.npz`: per-run accuracy matrices (baseline and CMS).
-- `results/{dir}/summary.json`: aggregated metrics and run configuration.
-- `results/{dir}/figures/`: exported plots (accuracy over time, final forgetting per task).
+---
 
-## Analyze results
+## Analysis
 
-Open the notebook `analysis.ipynb` to unsderstand better the experiment and the analysis of the results.
+Open the notebook:
 
-## Reproducibility notes
+```
+notebooks/analysis.ipynb
+```
 
-- Each run uses `seed + k` for run index `k`.
-- CUDA is used when available; otherwise CPU is used.
-- Results and plots are deterministic for a fixed seed and environment.
+Includes:
+- Average accuracy over time  
+- Final forgetting per task  
+- Paired statistical tests  
+
+---
+
+## Reproducibility Notes
+
+- Deterministic for fixed seeds  
+- CUDA used when available  
+- No task boundaries or replay buffers  
+
+---
+
+## Status
+
+Research code for reproducibility and analysis.  
+Not intended for production use.
+
+---
+
+## Citation
+
+```bibtex
+@inproceedings{behrouz2025nested,
+  title={Nested Learning: The Illusion of Deep Learning Architectures},
+  author={Behrouz, Ali and others},
+  booktitle={NeurIPS},
+  year={2025}
+}
+```
