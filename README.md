@@ -79,6 +79,22 @@ make lock
 
 ---
 
+## Experiment Overview
+
+The experiment compares a **baseline MLP** trained with standard SGD-style updates against the **same MLP wrapped with CMS update scheduling**. Both models are trained on a **sequential Permuted-MNIST** stream where each task applies a fixed pixel permutation, and tasks are learned one after another without revisiting earlier data.
+
+### Protocol
+- Train for a fixed number of epochs per task, then move to the next permutation.  
+- Evaluate accuracy on all seen tasks after each task completes to build an accuracy matrix.  
+- Repeat across multiple runs with different random seeds for statistical stability.  
+
+### What is measured
+- **Average accuracy over time** to capture overall performance.  
+- **Final forgetting per task** to quantify how much each task degrades after learning later tasks.  
+- **Paired statistical tests** comparing CMS vs baseline across runs.  
+
+---
+
 ## Reproducing Experiments
 
 ```bash
