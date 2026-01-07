@@ -6,6 +6,7 @@ import numpy as np
 import random
 from pathlib import Path
 import json
+import time
 
 from datasets.permuted_mnist import PermutedMNIST
 from optimizers.cms_optimizer_wrapper import CMSOptimizerWrapper, CMSGroup
@@ -75,6 +76,8 @@ def run_permuted_mnist_cms_experiment(
     # --- results ---
     acc_matrix_baseline = np.zeros((T, T), dtype=np.float32)
     acc_matrix_cms      = np.zeros((T, T), dtype=np.float32)
+    opt_time_baseline = 0.0
+    opt_time_cms = 0.0
 
     # --- train sequentially ---
     for current_t in range(T):
@@ -88,16 +91,20 @@ def run_permuted_mnist_cms_experiment(
                 x, y = x.to(device), y.to(device)
 
                 # baseline
+                start_time = time.time()
                 baseline_optimizer.zero_grad()
                 loss = loss_fn(baseline_mlp(x), y)
                 loss.backward()
                 baseline_optimizer.step()
+                opt_time_baseline += time.time() - start_time
 
                 # cms
+                start_time = time.time()
                 seq_cms_optimizer.zero_grad()
                 loss = loss_fn(seq_cms(x), y)
                 loss.backward()
                 seq_cms_optimizer.step()
+                opt_time_cms += time.time() - start_time
 
         # --- evaluation + optional printing ---
         if verbose:
@@ -124,7 +131,7 @@ def run_permuted_mnist_cms_experiment(
         if verbose:
             print("-" * 55)
 
-    return acc_matrix_baseline, acc_matrix_cms
+    return acc_matrix_baseline, acc_matrix_cms, opt_time_baseline, opt_time_cms
 
 def run_n_times(n_runs=5, seed=None, verbose=False, dir="test", **kwargs):
 
@@ -141,6 +148,7 @@ def run_n_times(n_runs=5, seed=None, verbose=False, dir="test", **kwargs):
 
     base_forgets, cms_forgets = [], []
     base_accs, cms_accs = [], []
+    base_opt_times, cms_opt_times = [], []
 
     for k in range(n_runs):
 
@@ -150,7 +158,7 @@ def run_n_times(n_runs=5, seed=None, verbose=False, dir="test", **kwargs):
             print("-" * 70)
 
         run_seed = seed + k if seed is not None else None
-        A_base, A_cms = run_permuted_mnist_cms_experiment(
+        A_base, A_cms, T_base, T_cms = run_permuted_mnist_cms_experiment(
             verbose=verbose,
             seed=run_seed,
             device=device,
@@ -173,11 +181,14 @@ def run_n_times(n_runs=5, seed=None, verbose=False, dir="test", **kwargs):
         cms_forgets.append(cF)
         base_accs.append(bA)
         cms_accs.append(cA)
+        base_opt_times.append(T_base)
+        cms_opt_times.append(T_cms)
 
         if verbose:
             print("\n📊 Run summary")
             print(f"  Baseline | Avg Acc: {bA*100:6.2f}% | Forgetting: {bF*100:6.2f}%")
             print(f"  CMS      | Avg Acc: {cA*100:6.2f}% | Forgetting: {cF*100:6.2f}%")
+            print(f"  Optimization time (s) - Baseline: {T_base:.2f}s | CMS: {T_cms:.2f}s")
 
     report = {
         "baseline_avg_acc_mean":    float(np.mean(base_accs)),
@@ -192,6 +203,8 @@ def run_n_times(n_runs=5, seed=None, verbose=False, dir="test", **kwargs):
         "cms_forgetting_all":       cms_forgets,
         "baseline_acc_all":         base_accs,
         "cms_acc_all":              cms_accs,
+        "baseline_opt_time_mean":   float(np.mean(base_opt_times)),
+        "cms_opt_time_mean":        float(np.mean(cms_opt_times)),
     }
 
     # Perofrm statistical tests

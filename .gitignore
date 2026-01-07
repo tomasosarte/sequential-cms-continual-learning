@@ -1,6 +1,7 @@
 # Ignore virtual environment directories
 .venv
 data
+results/
 
 # Ignore temporary files
 *.tmp
