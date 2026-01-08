@@ -98,7 +98,7 @@ The experiment compares a **baseline MLP** trained with standard SGD-style updat
 ## Reproducing Experiments
 
 ```bash
-PYTHONPATH=. python3 experiments/run_experiment.py \
+PYTHONPATH=. python3 experiments/cms_architecture_experiment.py \
   --runs 10 \
   --seed 0 \
   --tasks 10 \

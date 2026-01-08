@@ -137,7 +137,7 @@ def run_n_times(n_runs=5, seed=None, verbose=False, dir="test", **kwargs):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"    
     print("\n" + "=" * 70)
-    print("Running Permuted-MNIST Continual Learning Experiment")
+    print("Running Sequential CMS on architecture Experiment")
     print(f"Using device: {device}")
     print(f"Total runs: {n_runs}")
     print("=" * 70)
