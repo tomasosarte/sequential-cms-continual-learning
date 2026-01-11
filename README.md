@@ -105,10 +105,24 @@ PYTHONPATH=. python3 experiments/cms_architecture_experiment.py \
   --epochs 8 \
   --batch-size 128 \
   --hidden-dims 256 128 64 \
-  --base-lr 5e-4 \
   --periods 4 2 1 \
+  --base-lr 5e-4 \
   --verbose \
   --dir test
+```
+
+
+```bash
+PYTHONPATH=. python3 experiments/cms_architecture_hyperparameter_search.py \
+  --trials 10 \
+  --target cms \
+  --runs 10 \
+  --seed 0 \
+  --tasks 10 \
+  --epochs 8 \
+  --batch-size 128 \
+  --hidden-dims 256 128 64 \
+  --periods 4 2 1 
 ```
 
 ---
