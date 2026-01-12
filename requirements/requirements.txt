@@ -76,6 +76,10 @@ bleach[css]==6.3.0 \
     --hash=sha256:6f3b91b1c0a02bb9a78b5a454c92506aa0fdf197e1d5e114d2e00c6f64306d22 \
     --hash=sha256:fe10ec77c93ddf3d13a73b035abaac7a9f5e436513864ccdad516693213c65d6
     # via nbconvert
+bottle==0.13.4 \
+    --hash=sha256:045684fbd2764eac9cdeb824861d1551d113e8b683d8d26e296898d3dd99a12e \
+    --hash=sha256:787e78327e12b227938de02248333d788cfe45987edca735f8f88e03472c3f47
+    # via optuna-dashboard
 certifi==2025.11.12 \
     --hash=sha256:97de8790030bbd5c2d96b7ec782fc2f7820ef8dba6db909ccf95449f2d062d4b \
     --hash=sha256:d8ab5478f2ecd78af242878415affce761ca6bc54a22a27e026d7c25357c3316
@@ -1131,6 +1135,12 @@ nvidia-nvtx-cu12==12.8.90 \
 optuna==4.6.0 \
     --hash=sha256:4c3a9facdef2b2dd7e3e2a8ae3697effa70fae4056fcf3425cfc6f5a40feb069 \
     --hash=sha256:89e38c2447c7f793a726617b8043f01e31f0bad54855040db17eb3b49404a369
+    # via
+    #   -r requirements/requirements.in
+    #   optuna-dashboard
+optuna-dashboard==0.20.0 \
+    --hash=sha256:52a6da480a2500b6993c8fa61c81063b0dbe730edbd9f651c81b318393cca71d \
+    --hash=sha256:7fe92a6b1ba8f1f77d29ff8a86fa09a01cd736e411e354d0c96c05cd4a86c289
     # via -r requirements/requirements.in
 packaging==25.0 \
     --hash=sha256:29572ef2b1f17581046b3a2227d5c611fb25ec70ca1ba8554b24b0e69331a484 \

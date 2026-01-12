@@ -36,7 +36,8 @@ def run_permuted_mnist_cms_architecture_experiment(
     seed=None,
     verbose=False,
     use_baseline=True,
-    use_cms=True
+    use_cms=True,
+    fast_eval=False,
 ):
     if not use_baseline and not use_cms:
         raise ValueError("At least one of use_baseline or use_cms must be True.")
@@ -91,15 +92,17 @@ def run_permuted_mnist_cms_architecture_experiment(
             "time": 0.0
         }
 
+    train_loaders = [t.train_loader(batch_size) for t in tasks]
+    test_loaders  = [t.test_loader() for t in tasks]
+
     # --- train sequentially ---
     for current_t in range(T):
-        train_loader = tasks[current_t].train_loader(batch_size=batch_size)
-
+        
         for m in methods.values():
             m["model"].train()
 
         for _ in range(epochs_per_task):
-            for x, y in train_loader:
+            for x, y in train_loaders[current_t]:
                 x, y = x.to(device), y.to(device)
                 for m in methods.values():
                     start = time.time()
@@ -110,11 +113,15 @@ def run_permuted_mnist_cms_architecture_experiment(
                     m["time"] += time.time() - start
 
         # --- Evaluation ---
-        for i in range(T):
+        if not fast_eval or current_t == T - 1:
             for m in methods.values():
-                m["acc"][i, current_t] = evaluate(
-                    m["model"], tasks[i].test_loader(), device
-                )
+                m["model"].eval()
+
+            for i in range(T):
+                for m in methods.values():
+                    m["acc"][i, current_t] = evaluate(
+                        m["model"], test_loaders[i], device
+                    )
 
         if verbose:
             print(f"\nEvaluation after training task {current_t + 1}")
@@ -138,6 +145,7 @@ def run_n_times(
     use_cms=True,
     use_baseline=True,
     save_results=True,
+    fast_eval=False,
     **kwargs
     ):
 
@@ -175,6 +183,7 @@ def run_n_times(
             device=device,
             use_baseline=use_baseline,
             use_cms=use_cms,
+            fast_eval=fast_eval,
             **kwargs
         )
 

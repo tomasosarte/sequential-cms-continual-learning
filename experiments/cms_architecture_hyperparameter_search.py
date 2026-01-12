@@ -1,6 +1,11 @@
-import numpy as np
 import optuna
+import numpy as np
+from pathlib import Path
+
 optuna.logging.set_verbosity(optuna.logging.INFO)
+
+DB_PATH = Path(__file__).resolve().parent.parent / "optuna_lr.db"
+STORAGE = f"sqlite:///{DB_PATH}"
 
 from experiments.cms_architecture_experiment import run_n_times
 
@@ -13,14 +18,16 @@ def objective(trial, use_cms, use_baseline, base_kwargs):
         raise ValueError("At most one of use_baseline or use_cms must be True.")
     
     # --- sample learning rate ---
-    lr_grid = lr_grid = np.linspace(1e-6, 5e-4, 500).tolist()
-    base_lr = trial.suggest_categorical("base_lr", lr_grid)
+    # lr_grid = lr_grid = np.linspace(1e-6, 5e-4, 500).tolist()
+    # base_lr = trial.suggest_categorical("base_lr", lr_grid)
+    base_lr = trial.suggest_float("base_lr", 1e-6, 5e-4, log=True)
 
     # --- run experiment (silent, no files) ---
     report = run_n_times(
         base_lr=base_lr,
         verbose=False,
         save_results=False,
+        fast_eval=True,
         use_cms=use_cms,
         use_baseline=use_baseline,
         **base_kwargs
@@ -37,7 +44,7 @@ def run_optuna(n_trials, use_cms, use_baseline, base_kwargs):
     study = optuna.create_study(
         study_name=study_name,
         direction="maximize",
-        storage="sqlite:///optuna_lr.db",
+        storage=STORAGE,
         load_if_exists=True,
     )
 
@@ -99,7 +106,7 @@ if __name__ == "__main__":
 # import optuna
 
 # study = optuna.load_study(
-#     study_name="cms_lr_search",
+#     study_name="lr_search_baseline",
 #     storage="sqlite:///optuna_lr.db",
 # )
 
