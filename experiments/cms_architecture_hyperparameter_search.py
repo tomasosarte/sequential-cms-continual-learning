@@ -30,6 +30,7 @@ def objective(trial, use_cms, use_baseline, base_kwargs):
         fast_eval=True,
         use_cms=use_cms,
         use_baseline=use_baseline,
+        trial=trial,
         **base_kwargs
     )
 
@@ -46,6 +47,10 @@ def run_optuna(n_trials, use_cms, use_baseline, base_kwargs):
         direction="maximize",
         storage=STORAGE,
         load_if_exists=True,
+        # Pruner to stop unpromising trials early
+        pruner=optuna.pruners.MedianPruner(
+            n_warmup_steps=1,
+        )
     )
 
     study.optimize(

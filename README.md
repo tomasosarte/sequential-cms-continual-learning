@@ -105,10 +105,11 @@ PYTHONPATH=. python3 experiments/cms_architecture_experiment.py \
   --epochs 8 \
   --batch-size 128 \
   --hidden-dims 256 128 64 \
-  --periods 4 2 1 \
-  --base-lr 5e-4 \
+  --periods 3 2 1 \
+  --base-lr 9e-05 \
+  --baseline-lr 2.490716714676141e-05 \
   --verbose \
-  --dir test
+  --dir optimized_lr
 ```
 
 
@@ -119,10 +120,29 @@ PYTHONPATH=. python3 experiments/cms_architecture_hyperparameter_search.py \
   --runs 10 \
   --seed 0 \
   --tasks 10 \
-  --epochs 8 \
+  --epochs 10 \
   --batch-size 128 \
-  --hidden-dims 256 128 64 \
-  --periods 4 2 1 
+  --hidden-dims 128 64 32 \
+  --periods 3 2 1 
+```
+
+```bash
+PYTHONPATH=. python3 experiments/cms_optimizer_experiment.py \
+  --runs 10 \
+  --seed 0 \
+  --verbose \
+  --tasks 10 \
+  --epochs 10 \
+  --batch-size 64 \
+  --hidden-dims 128 64 32 \
+  --muon-lr 1e-4 \
+  --M3-lr 1e-4 \
+  --m1 0.9 \
+  --m2 0.45 \
+  --v1 0.9 \
+  --alpha 0.5 \
+  --frequency 2 \
+  --dir optimizer_test
 ```
 
 ---

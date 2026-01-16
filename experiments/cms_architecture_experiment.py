@@ -7,6 +7,7 @@ import random
 from pathlib import Path
 import json
 import time
+import optuna
 
 from datasets.permuted_mnist import PermutedMNIST
 from optimizers.cms_optimizer_wrapper import CMSOptimizerWrapper, CMSGroup
@@ -31,6 +32,7 @@ def run_permuted_mnist_cms_architecture_experiment(
     batch_size=128,
     hidden_dims=(256, 128, 64),
     base_lr=5e-4,
+    baseline_lr=5e-4,
     periods=(4, 2, 1),
     device=None,
     seed=None,
@@ -61,36 +63,34 @@ def run_permuted_mnist_cms_architecture_experiment(
     loss_fn = nn.CrossEntropyLoss()
 
     methods = {}
-    if use_baseline:
-        baseline_mlp = MLP(784, list(hidden_dims), 10).to(device)
-        baseline_optimizer = CMSOptimizerWrapper(
-            groups=[CMSGroup(params=list(baseline_mlp.parameters()), lr=base_lr, chunk=1)],
-            base_optim_cls=optim.Adam,
-        )
-        methods["baseline"] = {
-            "model": baseline_mlp,
-            "optim": baseline_optimizer,
-            "acc": np.zeros((T, T), dtype=np.float32),
-            "time": 0.0
-        }
-
-    if use_cms:
-        frequencies = [base_lr / p for p in periods]
-        seq_cms = MLP(784, list(hidden_dims), 10).to(device)
-        seq_cms_optimizer = CMSOptimizerWrapper(
-            groups=[
-                CMSGroup(params=list(seq_cms.slow.parameters()), lr=frequencies[0], chunk=periods[0]),
-                CMSGroup(params=list(seq_cms.mid.parameters()),  lr=frequencies[1], chunk=periods[1]),
-                CMSGroup(params=list(seq_cms.fast.parameters()), lr=frequencies[2], chunk=periods[2]),
-            ],
-            base_optim_cls=optim.Adam,
-        )
-        methods["cms"] = {
-            "model": seq_cms,
-            "optim": seq_cms_optimizer,
-            "acc": np.zeros((T, T), dtype=np.float32),
-            "time": 0.0
-        }
+    baseline_mlp = MLP(784, list(hidden_dims), 10).to(device)
+    baseline_optimizer = CMSOptimizerWrapper(
+        groups=[CMSGroup(params=list(baseline_mlp.parameters()), lr=baseline_lr, chunk=1)],
+        base_optim_cls=optim.Adam,
+    )
+    methods["baseline"] = {
+        "model": baseline_mlp,
+        "optim": baseline_optimizer,
+        "acc": np.zeros((T, T), dtype=np.float32),
+        "time": 0.0
+    }
+    
+    frequencies = [base_lr / p for p in periods]
+    seq_cms = MLP(784, list(hidden_dims), 10).to(device)
+    seq_cms_optimizer = CMSOptimizerWrapper(
+        groups=[
+            CMSGroup(params=list(seq_cms.slow.parameters()), lr=frequencies[0], chunk=periods[0]),
+            CMSGroup(params=list(seq_cms.mid.parameters()),  lr=frequencies[1], chunk=periods[1]),
+            CMSGroup(params=list(seq_cms.fast.parameters()), lr=frequencies[2], chunk=periods[2]),
+        ],
+        base_optim_cls=optim.Adam,
+    )
+    methods["cms"] = {
+        "model": seq_cms,
+        "optim": seq_cms_optimizer,
+        "acc": np.zeros((T, T), dtype=np.float32),
+        "time": 0.0
+    }
 
     train_loaders = [t.train_loader(batch_size) for t in tasks]
     test_loaders  = [t.test_loader() for t in tasks]
@@ -146,6 +146,7 @@ def run_n_times(
     use_baseline=True,
     save_results=True,
     fast_eval=False,
+    trial=None,
     **kwargs
     ):
 
@@ -210,7 +211,18 @@ def run_n_times(
             cms_forgets.append(cF)
             cms_accs.append(cA)
             cms_opt_times.append(methods["cms"]["time"])
+        
+        # --- PRUNING POINT ---
+        if trial is not None:
+            if use_cms:
+                current_mean = float(np.mean(cms_accs))
+            else:
+                current_mean = float(np.mean(base_accs))
 
+            trial.report(current_mean, step=k)
+
+            if trial.should_prune():
+                raise optuna.TrialPruned()
 
         if verbose:
             print("\n📊 Run summary")
@@ -319,6 +331,7 @@ if __name__ == "__main__":
     # --- optimization ---
     parser.add_argument("--base-lr", type=float, default=5e-4, help="Base learning rate")
     parser.add_argument("--periods", type=int, nargs="+", default=[4, 2, 1], help="CMS update periods (slow → fast)")
+    parser.add_argument("--baseline-lr", type=float, default=5e-4, help="Baseline learning rate")
 
     # --- output ---
     parser.add_argument("--dir", type=str, default="results", help="Directory to store results and plots")
@@ -336,4 +349,5 @@ if __name__ == "__main__":
         hidden_dims=tuple(args.hidden_dims),
         base_lr=args.base_lr,
         periods=tuple(args.periods),
+        baseline_lr=args.baseline_lr,
     )

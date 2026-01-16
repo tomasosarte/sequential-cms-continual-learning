@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
 
 import numpy as np
 import random
@@ -9,7 +8,7 @@ import json
 import time
 
 from datasets.permuted_mnist import PermutedMNIST
-from optimizers.cms_momentum import CMSMomentum
+from optimizers.muon_optimizers import Muon, MultiScaleMuon
 from experiments.metrics import compute_avg_forgetting, compute_avg_accuracy
 from models.mlp import MLP
 from experiments.plots import make_plots_from_results
@@ -26,19 +25,22 @@ def evaluate(model, loader, device) -> float:
     return correct / len(loader.dataset)
 
 def run_permuted_mnist_cms_optimizer_experiment(
-    T=10,
-    epochs_per_task=8,
-    batch_size=128,
+    T: int = 10,
+    epochs_per_task: int = 8,
+    batch_size: int = 128,
     hidden_dims=(256, 128, 64),
-    base_lr=5e-4,
-    slow_period=4,
-    slow_freq=0.8,
-    fast_freq=0.9,
-    lam=0.5,
+    muon_lr: float = 5e-4,
+    M3_lr: float = 5e-4,
+    m1: float = 0.9,
+    m2: float = 0.8,
+    v1: float = 0.9,
+    alpha: float = 1.0,
+    frequency: int = 2,
     device=None,
     seed=None,
     verbose=False,
-):
+):  
+
     # --- device ---
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -59,31 +61,29 @@ def run_permuted_mnist_cms_optimizer_experiment(
 
     # --- baseline ---
     momentum_mlp = MLP(784, list(hidden_dims), 10).to(device)
-    momentum_optimizer = CMSMomentum(
-        lr=base_lr,
-        beta_fast=fast_freq,
-        use_multi_timescale=False,
-        params=momentum_mlp.parameters()
+    momentum_optimizer = Muon(
+        params=momentum_mlp.parameters(),
+        lr=muon_lr,
+        momentum=m1
     )
 
     # --- CMS ---
     cms_momentum_mlp = MLP(784, list(hidden_dims), 10).to(device)
-    cms_momemntum_optimizer = CMSMomentum(
-        lr=base_lr,
-        beta_fast=fast_freq,
-        beta_slow=slow_freq,
-        slow_period=slow_period,
-        lam=lam,
-        use_multi_timescale=False,
-        params=cms_momentum_mlp.parameters()
+    cms_optimizer = MultiScaleMuon(
+        params=cms_momentum_mlp.parameters(),
+        lr=M3_lr,
+        lr_m1=m1,
+        lr_m2=m2,
+        lr_v1=v1,
+        alpha=alpha,
+        frequency=frequency
     )
 
     # --- results ---
+    opt_time_baseline, opt_time_cms = 0.0, 0.0
     acc_matrix_baseline = np.zeros((T, T), dtype=np.float32)
     acc_matrix_cms      = np.zeros((T, T), dtype=np.float32)
-    opt_time_baseline = 0.0
-    opt_time_cms = 0.0
-
+    
     # --- train sequentially ---
     for current_t in range(T):
         train_loader = tasks[current_t].train_loader(batch_size=batch_size)
@@ -105,17 +105,17 @@ def run_permuted_mnist_cms_optimizer_experiment(
 
                 # cms
                 start_time = time.time()
-                cms_momemntum_optimizer.zero_grad()
+                cms_optimizer.zero_grad()
                 loss = loss_fn(cms_momentum_mlp(x), y)
                 loss.backward()
-                cms_momemntum_optimizer.step()
+                cms_optimizer.step()
                 opt_time_cms += time.time() - start_time
 
         # --- evaluation + optional printing ---
         if verbose:
             print("\nEvaluation after training task", current_t + 1)
             print("-" * 55)
-            print(f"{'Eval Task':<10} | {'Momentum':<15} | {'CMS Momentum':<15}")
+            print(f"{'Eval Task':<10} | {'Muon':<15} | {'M3':<15}")
             print("-" * 55)
 
         for i in range(T):
@@ -129,7 +129,7 @@ def run_permuted_mnist_cms_optimizer_experiment(
             if verbose:
                 print(
                     f"{i+1:<10} | "
-                    f"{acc_matrix_baseline[i, current_t]*100:>6.2f}%{'':<7} | "
+                    f"{acc_matrix_baseline[i, current_t]*100:>6.2f}%{'':<8} | "
                     f"{acc_matrix_cms[i, current_t]*100:>6.2f}%"
                 )
 
@@ -142,7 +142,7 @@ def run_n_times(n_runs=5, seed=None, verbose=False, dir="test", **kwargs):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"    
     print("\n" + "=" * 70)
-    print("Running CMS on optimizer Experiment")
+    print("Running CMS on Muon Experiment")
     print(f"Using device: {device}")
     print(f"Total runs: {n_runs}")
     print("=" * 70)
@@ -191,9 +191,9 @@ def run_n_times(n_runs=5, seed=None, verbose=False, dir="test", **kwargs):
 
         if verbose:
             print("\n📊 Run summary")
-            print(f"  Momentum     | Avg Acc: {bA*100:6.2f}% | Forgetting: {bF*100:6.2f}%")
-            print(f"  CMS Momentum | Avg Acc: {cA*100:6.2f}% | Forgetting: {cF*100:6.2f}%")
-            print(f"  Optimization time (s) - Momentum: {T_base:.2f}s | CMS Momentum: {T_cms:.2f}s")
+            print(f"  Muon     | Avg Acc: {bA*100:6.2f}% | Forgetting: {bF*100:6.2f}%")
+            print(f"  M3 | Avg Acc: {cA*100:6.2f}% | Forgetting: {cF*100:6.2f}%")
+            print(f"  Optimization time (s) - Muon: {T_base:.2f}s | M3: {T_cms:.2f}s")
 
     report = {
         "baseline_avg_acc_mean":    float(np.mean(base_accs)),
@@ -258,41 +258,29 @@ if __name__ == "__main__":
     )
 
     # --- general ---
-    parser.add_argument("--runs", type=int, default=10,
-                        help="Number of independent experiment runs (different seeds)")
-    parser.add_argument("--seed", type=int, default=0,
-                        help="Base random seed (run k uses seed+k)")
-    parser.add_argument("--verbose", action="store_true",
-                        help="Print per-task accuracy tables")
+    parser.add_argument("--runs", type=int, default=10, help="Number of independent experiment runs (different seeds)")
+    parser.add_argument("--seed", type=int, default=0, help="Base random seed (run k uses seed+k)")
+    parser.add_argument("--verbose", action="store_true", help="Print per-task accuracy tables")
 
     # --- experiment ---
-    parser.add_argument("--tasks", type=int, default=10,
-                        help="Number of sequential Permuted-MNIST tasks")
-    parser.add_argument("--epochs", type=int, default=8,
-                        help="Training epochs per task")
-    parser.add_argument("--batch-size", type=int, default=128,
-                        help="Mini-batch size")
+    parser.add_argument("--tasks", type=int, default=10, help="Number of sequential Permuted-MNIST tasks")
+    parser.add_argument("--epochs", type=int, default=8, help="Training epochs per task")
+    parser.add_argument("--batch-size", type=int, default=128, help="Mini-batch size")
 
     # --- model ---
-    parser.add_argument("--hidden-dims", type=int, nargs="+",
-                        default=[256, 128, 64],
-                        help="MLP hidden layer sizes")
+    parser.add_argument("--hidden-dims", type=int, nargs="+",default=[256, 128, 64], help="MLP hidden layer sizes")
 
     # --- optimization (CURRENT CMS SETUP) ---
-    parser.add_argument("--base-lr", type=float, default=5e-4,
-                        help="Base learning rate")
-    parser.add_argument("--beta-fast", type=float, default=0.9,
-                        help="Fast momentum factor")
-    parser.add_argument("--beta-slow", type=float, default=0.8,
-                        help="Slow momentum factor")
-    parser.add_argument("--slow-period", type=int, default=4,
-                        help="Slow momentum consolidation period")
-    parser.add_argument("--lambda-cms", type=float, default=0.5,
-                        help="Fast/slow momentum mixing coefficient")
+    parser.add_argument("--muon-lr", type=float, default=5e-4, help="Learning rate for Muon optimizer")
+    parser.add_argument("--M3-lr", type=float, default=5e-4, help="Learning rate for M3 optimizer")
+    parser.add_argument("--m1", type=float, default=0.9, help="Momentum factor for baseline Muon optimizer")
+    parser.add_argument("--m2", type=float, default=0.8, help="Slow momentum factor for CMS optimizer")
+    parser.add_argument("--v1", type=float, default=0.9, help="Velocity factor for CMS optimizer")  
+    parser.add_argument("--alpha", type=float, default=1.0, help="Alpha parameter for CMS optimizer")
+    parser.add_argument("--frequency", type=int, default=2, help="Frequency parameter for CMS optimizer")
 
     # --- output ---
-    parser.add_argument("--dir", type=str, default="results",
-                        help="Directory to store results and plots")
+    parser.add_argument("--dir", type=str, default="results", help="Directory to store results and plots")
 
     args = parser.parse_args()
 
@@ -305,9 +293,11 @@ if __name__ == "__main__":
         epochs_per_task=args.epochs,
         batch_size=args.batch_size,
         hidden_dims=tuple(args.hidden_dims),
-        base_lr=args.base_lr,
-        fast_freq=args.beta_fast,
-        slow_freq=args.beta_slow,
-        slow_period=args.slow_period,
-        lam=args.lambda_cms,
+        muon_lr=args.muon_lr,
+        M3_lr=args.M3_lr,
+        m1=args.m1,
+        m2=args.m2,
+        v1=args.v1,
+        alpha=args.alpha,
+        frequency=args.frequency,
     )

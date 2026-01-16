@@ -1,7 +1,0 @@
-BASELINE optimization results:
-
----- 10 trials ----
-
-🏆 Optuna finished
-Best value : 0.7328788936138153
-Best params: {'base_lr': 1.4840244836808403e-05}
