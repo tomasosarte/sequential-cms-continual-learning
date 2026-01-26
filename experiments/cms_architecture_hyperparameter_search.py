@@ -20,7 +20,7 @@ def objective(trial, use_cms, use_baseline, base_kwargs):
     # --- sample learning rate ---
     # lr_grid = lr_grid = np.linspace(1e-6, 5e-4, 500).tolist()
     # base_lr = trial.suggest_categorical("base_lr", lr_grid)
-    base_lr = trial.suggest_float("base_lr", 1e-6, 5e-4, log=True)
+    base_lr = trial.suggest_float("base_lr", 1e-5, 1e-4, log=True)
 
     # --- run experiment (silent, no files) ---
     report = run_n_times(
@@ -40,8 +40,28 @@ def objective(trial, use_cms, use_baseline, base_kwargs):
     
     return report["baseline_avg_acc_mean"]
 
-def run_optuna(n_trials, use_cms, use_baseline, base_kwargs):
-    study_name = "lr_search_baseline" if use_baseline else "lr_search_cms"
+def make_study_name(target: str, base_kwargs: dict) -> str:
+    H = "-".join(map(str, base_kwargs["hidden_dims"]))
+    P = "-".join(map(str, base_kwargs["periods"]))
+    return (
+        f"cms_lr:PermMNIST:{target}"
+        f":T{base_kwargs['T']}"
+        f":E{base_kwargs['epochs_per_task']}"
+        f":B{base_kwargs['batch_size']}"
+        f":H{H}"
+        f":P{P}"
+        f":R{base_kwargs['n_runs']}"
+        f":S{base_kwargs['seed']}"
+    )
+
+
+def run_optuna(
+        n_trials, 
+        use_cms, 
+        use_baseline, base_kwargs):
+    
+    target = "baseline" if use_baseline else "cms"
+    study_name = make_study_name(target, base_kwargs)
     study = optuna.create_study(
         study_name=study_name,
         direction="maximize",

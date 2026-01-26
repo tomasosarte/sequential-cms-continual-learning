@@ -10,7 +10,7 @@ import time
 import optuna
 
 from datasets.permuted_mnist import PermutedMNIST
-from optimizers.cms_optimizer_wrapper import CMSOptimizerWrapper, CMSGroup
+from optimizers.cms_optimizer_wrapper import CMS, CMSGroup, adam_update
 from experiments.metrics import compute_avg_forgetting, compute_avg_accuracy
 from models.mlp import MLP
 from experiments.plots import make_plots_from_results
@@ -40,7 +40,8 @@ def run_permuted_mnist_cms_architecture_experiment(
     use_baseline=True,
     use_cms=True,
     fast_eval=False,
-):
+):  
+    
     if not use_baseline and not use_cms:
         raise ValueError("At least one of use_baseline or use_cms must be True.")
     
@@ -64,9 +65,9 @@ def run_permuted_mnist_cms_architecture_experiment(
 
     methods = {}
     baseline_mlp = MLP(784, list(hidden_dims), 10).to(device)
-    baseline_optimizer = CMSOptimizerWrapper(
+    baseline_optimizer = CMS(
         groups=[CMSGroup(params=list(baseline_mlp.parameters()), lr=baseline_lr, chunk=1)],
-        base_optim_cls=optim.Adam,
+        update_fn=adam_update
     )
     methods["baseline"] = {
         "model": baseline_mlp,
@@ -75,15 +76,22 @@ def run_permuted_mnist_cms_architecture_experiment(
         "time": 0.0
     }
     
-    frequencies = [base_lr / p for p in periods]
+    # frequencies = [base_lr / p for p in periods]
     seq_cms = MLP(784, list(hidden_dims), 10).to(device)
-    seq_cms_optimizer = CMSOptimizerWrapper(
-        groups=[
-            CMSGroup(params=list(seq_cms.slow.parameters()), lr=frequencies[0], chunk=periods[0]),
-            CMSGroup(params=list(seq_cms.mid.parameters()),  lr=frequencies[1], chunk=periods[1]),
-            CMSGroup(params=list(seq_cms.fast.parameters()), lr=frequencies[2], chunk=periods[2]),
-        ],
-        base_optim_cls=optim.Adam,
+
+    assert len(periods) == len(seq_cms.levels), "periods must match number of MLP levels"
+
+    cms_groups = [
+        CMSGroup(
+            params=list(level.parameters()),
+            lr=base_lr,
+            chunk=periods[i],
+        )
+        for i, level in enumerate(seq_cms.levels)
+    ]
+    seq_cms_optimizer = CMS(
+        groups=cms_groups,
+        update_fn=adam_update
     )
     methods["cms"] = {
         "model": seq_cms,

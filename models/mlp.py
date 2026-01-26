@@ -5,25 +5,35 @@ class MLP(nn.Module):
         input_dim=784,
         hidden_dims=[256, 128, 64],
         output_dim=10,
+        activation=nn.ReLU
         ):
+        
         super().__init__()
-        assert len(hidden_dims) == 3
-        self.slow = nn.Sequential(
-            nn.Linear(input_dim, hidden_dims[0]),
-            nn.ReLU(),
+        self.levels = nn.ModuleList()
+        self.levels.append(
+            nn.Sequential(
+                nn.Linear(input_dim, hidden_dims[0]),
+                activation(),
+            )
         )
-        self.mid = nn.Sequential(
-            nn.Linear(hidden_dims[0], hidden_dims[1]),
-            nn.ReLU(),
-        )
-        self.fast = nn.Sequential(
-            nn.Linear(hidden_dims[1], hidden_dims[2]),
-            nn.ReLU(),
-            nn.Linear(hidden_dims[2], output_dim),
-        )
+        for i in range(len(hidden_dims) - 1):
+            if i != len(hidden_dims) - 2:
+                self.levels.append(
+                    nn.Sequential(
+                        nn.Linear(hidden_dims[i], hidden_dims[i+1]),
+                        activation(),
+                    )
+                )
+            else:
+                self.levels.append(
+                    nn.Sequential(
+                        nn.Linear(hidden_dims[i], hidden_dims[i+1]),
+                        activation(),
+                        nn.Linear(hidden_dims[i+1], output_dim),
+                    )
+                )
 
     def forward(self, x):
-        h = self.slow(x)
-        h = self.mid(h)
-        y = self.fast(h)
-        return y
+        for layer in self.levels:
+            x = layer(x)
+        return x
