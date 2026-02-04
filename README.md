@@ -42,7 +42,8 @@ This enables fast adaptation while preserving stable long-term representations.
 ```
 .
 ├── experiments/
-│   ├── run_experiment.py         # Main experiment runner (Baseline vs CMS)
+│   ├── cms_architecture_experiment.py         # Main experiment runner (Baseline vs CMS)
+    ├── cms_architecture_hyperparameter_search.py # Hyperparameter optimization runner (Baseline or CMS)
 │   ├── metrics.py                # Accuracy & forgetting metrics
 │   ├── stats.py                  # Paired statistical tests
 │   └── plots.py                  # Figure generation
@@ -115,34 +116,16 @@ PYTHONPATH=. python3 experiments/cms_architecture_experiment.py \
 
 ```bash
 PYTHONPATH=. python3 experiments/cms_architecture_hyperparameter_search.py \
-  --trials 10 \
+  --trials 50 \
   --target cms \
   --runs 10 \
   --seed 0 \
   --tasks 10 \
-  --epochs 10 \
+  --epochs 8 \
   --batch-size 128 \
   --hidden-dims 128 64 32 \
-  --periods 3 2 1 
-```
-
-```bash
-PYTHONPATH=. python3 experiments/cms_optimizer_experiment.py \
-  --runs 10 \
-  --seed 0 \
-  --verbose \
-  --tasks 10 \
-  --epochs 10 \
-  --batch-size 64 \
-  --hidden-dims 128 64 32 \
-  --muon-lr 1e-4 \
-  --M3-lr 1e-4 \
-  --m1 0.9 \
-  --m2 0.45 \
-  --v1 0.9 \
-  --alpha 0.5 \
-  --frequency 2 \
-  --dir optimizer_test
+  --periods 6 3 1 \
+  --alpha 0.0
 ```
 
 ---
