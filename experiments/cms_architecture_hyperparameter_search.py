@@ -50,6 +50,7 @@ def make_study_name(target: str, base_kwargs: dict) -> str:
         f":B{base_kwargs['batch_size']}"
         f":H{H}"
         f":P{P}"
+        f":alpha{base_kwargs['alpha']}"
         f":R{base_kwargs['n_runs']}"
         f":S{base_kwargs['seed']}"
     )
@@ -92,15 +93,25 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser("Optuna LR search")
-    parser.add_argument("--trials", type=int, default=30)
+
+    # --- general ---
+    parser.add_argument("--trials", type=int, default=50)
+    parser.add_argument("--runs", type=int, default=10, help="Number of independent experiment runs (different seeds)")
+    parser.add_argument("--seed", type=int, default=0, help="Base random seed (run k uses seed+k)")
+    parser.add_argument("--verbose", action="store_true", help="Print per-task accuracy tables.")
     parser.add_argument("--target", choices=["cms", "baseline"], default="cms")
-    parser.add_argument("--runs", type=int, default=5)
-    parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--epochs", type=int, default=8)
-    parser.add_argument("--batch-size", type=int, default=128)
-    parser.add_argument("--hidden-dims", type=int, nargs="+", default=[256, 128, 64])
-    parser.add_argument("--periods", type=int, nargs="+", default=[4, 2, 1])
-    parser.add_argument("--tasks", type=int, default=10)
+
+    # --- experiment ---
+    parser.add_argument("--tasks", type=int, default=10, help="Number of sequential Permuted-MNIST tasks")
+    parser.add_argument("--epochs", type=int, default=8, help="Training epochs per task")
+    parser.add_argument("--batch-size", type=int, default=128, help="Mini-batch size")
+
+    # --- model ---
+    parser.add_argument("--hidden-dims", type=int, nargs="+", default=[256, 128, 64], help="MLP hidden layer sizes")
+
+    # --- optimization ---
+    parser.add_argument("--periods", type=int, nargs="+", default=[4, 2, 1], help="CMS update periods (slow → fast)")
+    parser.add_argument("--alpha", type=float, default=0.0, help="LR scaling exponent: lr = base_lr * period^alpha")
 
     args = parser.parse_args()
 
@@ -114,7 +125,8 @@ def main():
         batch_size=args.batch_size,
         hidden_dims=tuple(args.hidden_dims),
         periods=tuple(args.periods),
-        T=args.tasks
+        T=args.tasks,
+        alpha=args.alpha
     )
 
     run_optuna(

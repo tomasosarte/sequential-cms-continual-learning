@@ -34,6 +34,7 @@ def run_permuted_mnist_cms_architecture_experiment(
     base_lr=5e-4,
     baseline_lr=5e-4,
     periods=(4, 2, 1),
+    alpha=0.0,
     device=None,
     seed=None,
     verbose=False,
@@ -76,7 +77,7 @@ def run_permuted_mnist_cms_architecture_experiment(
         "time": 0.0
     }
     
-    # frequencies = [base_lr / p for p in periods]
+    frequencies = [base_lr * (p ** alpha) for p in periods]
     seq_cms = MLP(784, list(hidden_dims), 10).to(device)
 
     assert len(periods) == len(seq_cms.levels), "periods must match number of MLP levels"
@@ -84,7 +85,7 @@ def run_permuted_mnist_cms_architecture_experiment(
     cms_groups = [
         CMSGroup(
             params=list(level.parameters()),
-            lr=base_lr,
+            lr=frequencies[i],
             chunk=periods[i],
         )
         for i, level in enumerate(seq_cms.levels)
@@ -339,6 +340,7 @@ if __name__ == "__main__":
     # --- optimization ---
     parser.add_argument("--base-lr", type=float, default=5e-4, help="Base learning rate")
     parser.add_argument("--periods", type=int, nargs="+", default=[4, 2, 1], help="CMS update periods (slow → fast)")
+    parser.add_argument("--alpha", type=float, default=0.0, help="LR scaling exponent: lr = base_lr * period^alpha")
     parser.add_argument("--baseline-lr", type=float, default=5e-4, help="Baseline learning rate")
 
     # --- output ---
@@ -357,5 +359,6 @@ if __name__ == "__main__":
         hidden_dims=tuple(args.hidden_dims),
         base_lr=args.base_lr,
         periods=tuple(args.periods),
+        alpha=args.alpha,
         baseline_lr=args.baseline_lr,
     )
