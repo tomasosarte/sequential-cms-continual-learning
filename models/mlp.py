@@ -34,6 +34,7 @@ class MLP(nn.Module):
                 )
 
     def forward(self, x):
+        x = x.view(x.size(0), -1)
         for layer in self.levels:
             x = layer(x)
         return x

@@ -106,9 +106,9 @@ PYTHONPATH=. python3 experiments/cms_architecture_experiment.py \
   --epochs 8 \
   --batch-size 128 \
   --hidden-dims 256 128 64 \
-  --periods 3 2 1 \
-  --base-lr 9e-05 \
-  --baseline-lr 2.490716714676141e-05 \
+  --periods 6 3 1 \
+  --base-lr 5e-05 \
+  --baseline-lr 2.5e-05 \
   --verbose \
   --dir optimized_lr
 ```

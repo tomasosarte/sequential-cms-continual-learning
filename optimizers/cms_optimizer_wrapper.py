@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Dict, Any, Callable
 import torch
+from torch.optim import Optimizer
 
 @dataclass
 class CMSGroup:
@@ -9,40 +10,54 @@ class CMSGroup:
     chunk: int = 1                      
     opt_kwargs: Dict[str, Any] | None = None
 
-class CMS:
+class CMS(Optimizer):
     def __init__(
         self,
         groups: List[CMSGroup],
         update_fn: Callable[..., None],
     ) -> None:
         self.step_idx: int = 0
-        self.groups = groups
+        # self.groups = groups
         self.update_fn = update_fn
-        self.state: Dict[torch.nn.Parameter, Dict[str, Any]] = {}
+        # self.state: Dict[torch.nn.Parameter, Dict[str, Any]] = {}
+
+        # ----- Turn into pytorch optimizer -----
+        param_groups = []
+        for g in groups:
+            param_groups.append({
+                "params": g.params,
+                "lr": g.lr,
+                "chunk": g.chunk,
+                "opt_kwargs": g.opt_kwargs or {},
+            })
+        super().__init__(param_groups, defaults={})
+        # ---------------------------------------
 
     @torch.no_grad()
-    def step(self) -> None:
+    def step(self, closure=None) -> None:
         self.step_idx += 1
 
-        for g in self.groups:
-            if self.step_idx % g.chunk != 0:
+        for group in self.param_groups:
+            chunk = group["chunk"]
+            if self.step_idx % chunk != 0:
                 continue
 
-            for p in g.params:
+            lr = group["lr"]
+            opt_kwargs = group.get("opt_kwargs", {}) or {}
+
+            for p in group["params"]:
+                if p.grad is None:
+                    continue
                 st = self.state.setdefault(p, {})
-                self.update_fn(
-                    param=p,
-                    state=st,
-                    lr=g.lr,
-                    **(g.opt_kwargs or {})
-                )
+                self.update_fn(param=p, state=st, lr=lr, **opt_kwargs)
 
-    def zero_grad(self) -> None:
-        for g in self.groups:
-            if self.step_idx % g.chunk != 0:
+    def zero_grad(self, set_to_none: bool = True) -> None:
+        for group in self.param_groups:
+            chunk = group["chunk"]
+            if self.step_idx % chunk != 0:
                 continue
-            for p in g.params:
-                p.grad = None
+            for p in group["params"]:
+                p.grad = None if set_to_none else (p.grad.zero_() if p.grad is not None else None)
 
 
 def adam_update(

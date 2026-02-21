@@ -50,7 +50,7 @@ def run_permuted_mnist_cms_architecture_experiment(
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    # --- reproducibility (optional) ---
+    # --- reproducibility ---
     if seed is not None:
         random.seed(seed)
         np.random.seed(seed)
@@ -107,6 +107,7 @@ def run_permuted_mnist_cms_architecture_experiment(
     # --- train sequentially ---
     for current_t in range(T):
         
+        # --- Training ---
         for m in methods.values():
             m["model"].train()
 
@@ -126,7 +127,7 @@ def run_permuted_mnist_cms_architecture_experiment(
             for m in methods.values():
                 m["model"].eval()
 
-            for i in range(T):
+            for i in range(current_t+1):
                 for m in methods.values():
                     m["acc"][i, current_t] = evaluate(
                         m["model"], test_loaders[i], device
